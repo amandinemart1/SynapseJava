@@ -54,7 +54,7 @@ public class Main {
 
         // Test d'insertion d'une paire clé-valeur dans Network1 par nodeA
         System.out.println("\nTest d'insertion dans Network1 par nodeA :");
-        nodeA.put("key1", "value1", network1);
+        nodeA.put("key1", "value1", network1,2);
 
         // Test de récupération de la valeur dans Network1 par nodeC
         System.out.println("\nTest de récupération dans Network1 par nodeC :");
@@ -63,18 +63,18 @@ public class Main {
 
         // Test de routage inter-réseaux d'une requête GET depuis nodeB vers nodeA
         System.out.println("\nTest de routage inter-réseaux :");
-        Message getMessage = new Message("GET", "key1", null, nodeB, nodeA, 5);
+        Message getMessage = new Message("GET", "key1", null, nodeB, nodeA, 5,2);
         nodeB.routeMessage(getMessage);
 
         // Test de mise à jour de la valeur pour 'key1' dans Network2 par nodeC
         System.out.println("\nTest de mise à jour de la clé 'key1' dans Network2 :");
-        nodeC.put("key1", "updatedValue", network2);
+        nodeC.put("key1", "updatedValue", network2,2);
         String updatedValue = nodeB.get("key1", network2);
         System.out.println("Valeur mise à jour pour 'key1' dans Network2 : " + (updatedValue != null ? updatedValue : "non trouvée"));
 
         // Test d'expiration du TTL en envoyant un message avec TTL = 1
         System.out.println("\nTest d'expiration du TTL :");
-        Message expiringMessage = new Message("GET", "key1", null, nodeA, nodeC, 1); // TTL = 1
+        Message expiringMessage = new Message("GET", "key1", null, nodeA, nodeC, 1,2); // TTL = 1
         nodeA.routeMessage(expiringMessage); 
 
         // Test de la fonction found : notification de la récupération d'une valeur

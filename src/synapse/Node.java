@@ -30,15 +30,61 @@ public class Node {
     }
 
     // Méthode pour insérer une paire clé-valeur dans un réseau
-    public void put(String key, String value, Network network) {
+    public void put(String key, String value, Network network, int mrr) {
         if (networks.contains(network)) {
             network.storeKeyValue(this, key, value);
             keyValueStore.put(key, value); // Ajout au stockage local
             System.out.println("PUT: Valeur insérée dans le réseau " + network.getNetworkId());
+
+            // Vérifier la réplication si MRR est supérieur à 0
+            if (mrr > 0) {
+                replicateToOtherNetworks(key, value, mrr - 1);
+            }
         } else {
             System.out.println("Erreur : ce noeud n'appartient pas au réseau " + network.getNetworkId());
         }
     }
+
+   // Méthode pour répliquer vers d'autres réseaux en fonction de MRR
+   private void replicateToOtherNetworks(String key, String value, int mrr) {
+    for (Network network : networks) {
+        // Ne réplique que si la clé n'existe pas dans le réseau cible
+        if (!network.getKeyValueStore().contains(key)) {
+            Message replicationMessage = new Message("PUT", key, value, this, this, routingTable.initializeTTL(), mrr);
+            this.routeMessage(replicationMessage); // Route la réplication avec MRR décrémenté
+        }
+    }
+}
+
+// Méthode pour traiter les messages reçus avec MRR
+public void processMessage(Message message) {
+    if (message.isExpired() || isMessageProcessed(message)) {
+        System.out.println("Message expiré ou déjà traité.");
+        return;
+    }
+
+    switch (message.getOperationCode()) {
+        case "PUT":
+            if (goodDeal(message.getReceiver())) {
+                if (message.isReplicable()) {
+                    // Réplique si possible en décrémentant MRR
+                    put(message.getKey(), message.getValue(), message.getReceiver().getNetworks().iterator().next(), message.getMrr() - 1);
+                }
+            }
+            break;
+        case "GET":
+            String value = get(message.getKey(), message.getReceiver().getNetworks().iterator().next());
+            if (value != null) {
+                found(message.getKey(), value, message.getSender()); // Notifie l'expéditeur si trouvé
+            } else {
+                System.out.println("Valeur non trouvée pour la clé: " + message.getKey());
+            }
+            break;
+        default:
+            System.out.println("Opération inconnue.");
+    }
+}
+    
 
     // Méthode pour récupérer la valeur d'une clé
     public String get(String key, Network network) {
@@ -60,15 +106,6 @@ public class Node {
         }
     }
 
-    // Méthode pour traiter les messages reçus
-    public void processMessage(Message message) {
-        if (message.isExpired() || isMessageProcessed(message)) {
-            System.out.println("Message expiré ou déjà traité.");
-            return;
-        }
-        handleOperation(message);
-    }
-
     // Vérifie si le message a déjà été traité
     private boolean isMessageProcessed(Message message) {
         RequestTag tag = new RequestTag();
@@ -85,7 +122,7 @@ public class Node {
         switch (message.getOperationCode()) {
             case "PUT":
                 if (goodDeal(message.getReceiver())) { // Vérifie si le noeud est un bon candidat
-                    put(message.getKey(), message.getValue(), message.getReceiver().getNetworks().iterator().next());
+                    put(message.getKey(), message.getValue(), message.getReceiver().getNetworks().iterator().next(), message.getMrr());
                 }
                 break;
             case "GET":
